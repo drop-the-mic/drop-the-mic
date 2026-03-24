@@ -29,7 +29,7 @@ function App() {
           <nav className="sidebar">
             <div className="sidebar-header">
               <div className="sidebar-logo">
-                <img src="/logo.svg" alt="DTM" width={28} height={28} />
+                <img src="/logo.png" alt="DTM" width={28} height={28} style={{ borderRadius: 6 }} />
                 <div>
                   <div className="sidebar-title">DTM</div>
                   <div className="sidebar-subtitle">Drop The Mic</div>
