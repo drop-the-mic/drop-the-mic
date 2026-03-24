@@ -1,15 +1,20 @@
-FROM golang:1.23 AS builder
-ARG TARGETOS
+FROM --platform=$BUILDPLATFORM golang:1.25 AS builder
+ARG TARGETOS=linux
 ARG TARGETARCH
 
 WORKDIR /workspace
+
+# Copy go module files and download dependencies
 COPY operator/go.mod operator/go.sum ./
 RUN go mod download
 
+# Copy operator source
 COPY operator/ .
+
+# Copy pre-built UI dist into embed directory
 COPY ui/dist server/embed/dist/
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o server ./server/main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -a -o server ./server/main.go
 
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
