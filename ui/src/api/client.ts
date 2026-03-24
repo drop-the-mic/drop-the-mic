@@ -1,10 +1,47 @@
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 
+const TOKEN_KEY = 'dtm_token';
+
+/** Check whether a token exists in localStorage. */
+export function isAuthenticated(): boolean {
+  return localStorage.getItem(TOKEN_KEY) !== null;
+}
+
+/** Remove the stored token and redirect to the login page. */
+export function logout(): void {
+  localStorage.removeItem(TOKEN_KEY);
+  window.location.href = '/login';
+}
+
+/** Store the JWT token after a successful login. */
+export function setToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+/** Retrieve the stored JWT token. */
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+  const token = getToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const resp = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...options,
   });
+
+  if (resp.status === 401) {
+    localStorage.removeItem(TOKEN_KEY);
+    window.location.href = '/login';
+    throw new Error('unauthorized');
+  }
+
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({ error: resp.statusText }));
     throw new Error(err.error || resp.statusText);
@@ -74,6 +111,14 @@ export interface ChecklistResult {
 }
 
 export const api = {
+  login: (username: string, password: string) =>
+    request<{ token: string }>('/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+
+  authCheck: () => request<{ status: string }>('/auth/check'),
+
   listPolicies: (namespace?: string) =>
     request<ChecklistPolicy[]>(`/policies${namespace ? `?namespace=${namespace}` : ''}`),
 
