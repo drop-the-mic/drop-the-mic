@@ -1,3 +1,5 @@
+// Package notify provides the notification dispatcher and backend implementations
+// (Slack, GitHub Issues, Jira) for sending check alert notifications.
 package notify
 
 import (

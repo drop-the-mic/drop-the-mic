@@ -1,3 +1,5 @@
+// Package state manages the alert state machine for each check across policies.
+// States follow the lifecycle: UNKNOWN → FIRING → RESOLVED (or ESCALATED).
 package state
 
 import (
@@ -5,7 +7,7 @@ import (
 	"time"
 )
 
-// AlertState represents the current alert state of a check.
+// AlertState represents a check's position in the alert lifecycle.
 type AlertState string
 
 const (
@@ -15,15 +17,16 @@ const (
 	StateEscalated AlertState = "ESCALATED"
 )
 
-// CheckState holds the current state for a single check.
+// CheckState holds the current alert state and metadata for a single check.
 type CheckState struct {
-	State      AlertState
+	State       AlertState
 	FailedSince time.Time
 	RetryCount  int32
 	LastUpdated time.Time
 }
 
-// Transition represents a state change that requires action.
+// Transition is emitted when a check moves between alert states,
+// signaling that a notification should be sent.
 type Transition struct {
 	CheckID   string
 	PolicyRef string
@@ -33,9 +36,10 @@ type Transition struct {
 }
 
 // Store manages the alert state machine for all checks across all policies.
+// It is safe for concurrent use from multiple goroutines.
 type Store struct {
 	mu                  sync.RWMutex
-	checks              map[string]map[string]*CheckState // policyRef -> checkID -> state
+	checks              map[string]map[string]*CheckState // policyRef → checkID → state
 	escalationThreshold int32
 }
 

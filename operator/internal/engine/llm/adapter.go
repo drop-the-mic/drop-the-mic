@@ -1,3 +1,5 @@
+// Package llm defines the common LLM adapter interface and types used by
+// the verification engine to interact with different LLM providers.
 package llm
 
 import (
