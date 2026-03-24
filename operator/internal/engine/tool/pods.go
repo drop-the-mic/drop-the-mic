@@ -12,9 +12,9 @@ import (
 )
 
 type listPodsParams struct {
-	Namespace      string            `json:"namespace"`
-	LabelSelector  string            `json:"labelSelector,omitempty"`
-	FieldSelector  string            `json:"fieldSelector,omitempty"`
+	Namespace     string `json:"namespace"`
+	LabelSelector string `json:"labelSelector,omitempty"`
+	FieldSelector string `json:"fieldSelector,omitempty"`
 }
 
 func RegisterPods(r *Registry, client kubernetes.Interface) {
