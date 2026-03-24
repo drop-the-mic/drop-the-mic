@@ -1,3 +1,5 @@
+// Package scheduler implements the dual-loop cron scheduler that runs
+// full scans and failed-only rescans as independent goroutines per policy.
 package scheduler
 
 import (
@@ -26,10 +28,10 @@ type Scheduler struct {
 	k8sClient  client.Client
 	log        logr.Logger
 
-	cron          *cron.Cron
-	fullScanID    cron.EntryID
-	rescanID      cron.EntryID
-	mu            sync.Mutex
+	cron           *cron.Cron
+	fullScanID     cron.EntryID
+	rescanID       cron.EntryID
+	mu             sync.Mutex
 	cancelFullScan context.CancelFunc
 	cancelRescan   context.CancelFunc
 }

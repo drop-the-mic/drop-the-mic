@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import type { ChecklistPolicy, ChecklistResult } from '../api/client';
+import { timeAgo } from '../utils/format';
 import { Card, StatCard } from '../components/Card';
 import { HealthRing } from '../components/HealthRing';
 import { VerdictBadge, Badge } from '../components/Badge';
@@ -173,19 +174,6 @@ function ProgressBar({ pass, warn, fail }: { pass: number; warn: number; fail: n
       {fail > 0 && <div style={{ width: `${(fail / total) * 100}%`, background: 'var(--danger)', transition: 'width 0.3s' }} />}
     </div>
   );
-}
-
-function timeAgo(dateStr: string): string {
-  const now = Date.now();
-  const then = new Date(dateStr).getTime();
-  const diff = now - then;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
 }
 
 export default Dashboard;

@@ -143,6 +143,7 @@ func (r *ChecklistPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	})
 	if err := r.Status().Update(ctx, &policy); err != nil {
 		log.Error(err, "failed to update status")
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	return ctrl.Result{}, nil

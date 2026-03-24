@@ -1,0 +1,45 @@
+name: Sync Helm Charts
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "charts/**"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+        with:
+          path: main-repo
+
+      - name: Checkout charts repo
+        uses: actions/checkout@v4
+        with:
+          repository: drop-the-mic/charts
+          token: ${{ secrets.CHARTS_SYNC_TOKEN }}
+          path: charts-repo
+
+      - name: Sync charts
+        run: |
+          rsync -av --delete main-repo/charts/ charts-repo/charts/
+
+      - name: Check for changes
+        id: diff
+        working-directory: charts-repo
+        run: |
+          git diff --quiet && echo "changed=false" >> "$GITHUB_OUTPUT" || echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push
+        if: steps.diff.outputs.changed == 'true'
+        working-directory: charts-repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          CHART_VERSION=$(grep '^version:' charts/drop-the-mic/Chart.yaml | awk '{print $2}')
+          git commit -m "sync: update chart from main repo (v${CHART_VERSION})"
+          git push origin main

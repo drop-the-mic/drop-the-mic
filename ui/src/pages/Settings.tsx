@@ -46,11 +46,14 @@ function Settings() {
     jira: { enabled: false, url: '', project: '', issueType: 'Bug', credentialSecret: '' },
   });
 
+  // Populate form fields when server settings are first fetched.
+  // Intentionally omitting general/notif from deps — we only want to seed
+  // the form state on initial load, not re-sync on every keystroke.
   useEffect(() => {
     if (!settings) return;
     setJsonText(JSON.stringify(settings, null, 2));
-    if (settings.general) setGeneral({ ...general, ...(settings.general as object) });
-    if (settings.notification) setNotif({ ...notif, ...(settings.notification as object) });
+    if (settings.general) setGeneral(prev => ({ ...prev, ...(settings.general as object) }));
+    if (settings.notification) setNotif(prev => ({ ...prev, ...(settings.notification as object) }));
   }, [settings]);
 
   const mutation = useMutation({

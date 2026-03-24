@@ -1,3 +1,6 @@
+// Package engine orchestrates LLM-based verification of checklist items by
+// combining an LLM adapter with a tool registry, converting responses into
+// ChecklistResult specs.
 package engine
 
 import (
@@ -36,6 +39,8 @@ func (e *Engine) RunChecks(ctx context.Context, policy *dtmv1alpha1.ChecklistPol
 	startedAt := metav1.Now()
 	results := make([]dtmv1alpha1.CheckResult, 0, len(checks))
 
+	// Use the first target namespace as the default context for tool calls.
+	// An empty namespace causes tools to operate on the "" (all) namespace.
 	namespace := ""
 	if len(policy.Spec.TargetNamespaces) > 0 {
 		namespace = policy.Spec.TargetNamespaces[0]
@@ -119,9 +124,11 @@ func computeSummary(results []dtmv1alpha1.CheckResult) dtmv1alpha1.ScanSummary {
 	return summary
 }
 
-// ScanType for passing to RunChecks callers.
-func FullScanType() dtmv1alpha1.ScanType  { return dtmv1alpha1.ScanTypeFull }
-func RescanType() dtmv1alpha1.ScanType     { return dtmv1alpha1.ScanTypeRescan }
+// FullScanType returns the ScanType constant for full scans.
+func FullScanType() dtmv1alpha1.ScanType { return dtmv1alpha1.ScanTypeFull }
+
+// RescanType returns the ScanType constant for failed-only rescans.
+func RescanType() dtmv1alpha1.ScanType { return dtmv1alpha1.ScanTypeRescan }
 
 // GenerateResultName creates a unique name for a ChecklistResult.
 func GenerateResultName(policyName string, scanType dtmv1alpha1.ScanType) string {
