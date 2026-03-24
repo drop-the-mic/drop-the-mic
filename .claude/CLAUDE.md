@@ -65,24 +65,27 @@ drop-the-mic/
 │       └── manager/
 │
 ├── ui/                        ← React (Vite) 프론트엔드
+│   ├── public/
+│   │   └── logo.png               # 프로젝트 로고 (docs/images/logo.png 사본)
 │   ├── src/
 │   │   ├── pages/
 │   │   │   ├── Dashboard.tsx
-│   │   │   ├── Policies.tsx       # 자연어 에디터 포함
-│   │   │   ├── Results.tsx
-│   │   │   └── Settings.tsx
-│   │   ├── components/
+│   │   │   ├── Policies.tsx       # 자연어 에디터 포함 생성 모달
+│   │   │   ├── Results.tsx        # 필터/검색/pagination
+│   │   │   └── Settings.tsx       # Form/JSON 토글
+│   │   ├── components/            # Badge, Card, Button, Modal, Icons 등
+│   │   ├── utils/                 # timeAgo, formatDuration 유틸리티
 │   │   └── api/                   # Go API 클라이언트
 │   └── dist/                      # 빌드 결과 (Go embed 대상)
 │
-├── server/                    ← Go API Server (UI 백엔드)
+├── operator/server/           ← Go API Server (UI 백엔드, operator 모듈 내부)
 │   ├── main.go
 │   ├── handler/
 │   │   ├── policies.go
 │   │   ├── results.go
 │   │   ├── run.go                 # Run Now 핸들러
 │   │   └── settings.go
-│   └── embed.go                   # ui/dist embed
+│   └── embed/                     # ui/dist embed (빌드 시 복사)
 │
 └── charts/
     └── drop-the-mic/
@@ -145,6 +148,12 @@ type VerifyResponse struct {
 Claude는 `tool_use` 블록, Gemini/OpenAI는 `function_calling`을 사용한다.
 각 어댑터는 각 API의 Tool Call 형식을 `VerifyRequest.Tools`로 변환하는 책임을 가진다.
 
+**현재 구현 상태**: Claude만 구현 완료. Gemini/OpenAI는 미구현.
+
+**모델 선택**: `spec.llm.model` 필드로 지정 가능 (optional).
+생략 시 프로바이더별 기본 모델 사용:
+- Claude: `claude-sonnet-4-20250514`
+
 ### 4. 알림 상태 머신
 
 ```
@@ -175,7 +184,7 @@ Controller Watch가 annotation 변경을 감지 → 즉시 reconcile 트리거.
 | Operator | Go 1.23+, controller-runtime v0.19 | kubebuilder v4 스캐폴딩 |
 | CRD 생성 | controller-gen | `make generate` |
 | K8s 연동 | client-go | in-cluster config |
-| LLM | 자체 adapter | Claude / Gemini / OpenAI |
+| LLM | 자체 adapter | Claude 구현 완료 / Gemini·OpenAI 미구현 |
 | 스케줄러 | robfig/cron v3 | cron expression |
 | 알림 | slack-go, go-github, go-jira | |
 | UI | React 18 + Vite + TypeScript | |
@@ -253,75 +262,54 @@ ui:
 
 ---
 
-## 현재 구현 상태 (작업 시작 기준)
+## 현재 구현 상태
 
-- [ ] kubebuilder 프로젝트 초기화
-- [ ] ChecklistPolicy / ChecklistResult CRD 타입 정의
-- [ ] Controller Reconcile 루프
-- [ ] Dual-loop Scheduler
-- [ ] Tool Registry + 기본 Tool 구현 (pods, nodes, events, pdb, hpa)
-- [ ] LLM Adapter (Claude 우선)
-- [ ] 알림 상태 머신 (state.Store)
-- [ ] Slack 알림
-- [ ] GitHub Issues 알림
-- [ ] Jira 알림
-- [ ] Go API Server
-- [~] React UI (아래 "UI 완성 로드맵" 참조)
-- [ ] Go embed 통합
+- [x] kubebuilder 프로젝트 초기화
+- [x] ChecklistPolicy / ChecklistResult CRD 타입 정의
+- [x] Controller Reconcile 루프
+- [x] Dual-loop Scheduler
+- [x] Tool Registry + 기본 Tool 구현 (pods, nodes, events, pdb, hpa, images, logs)
+- [x] LLM Adapter (Claude) — 기본 모델: `claude-sonnet-4-20250514`, `spec.llm.model`로 변경 가능
+- [x] 알림 상태 머신 (state.Store)
+- [x] Slack 알림
+- [x] GitHub Issues 알림
+- [x] Jira 알림
+- [x] Go API Server
+- [x] React UI (Dashboard, Policies 생성/상세, Results 필터/검색, Settings 구조화 폼)
+- [x] Go embed 통합
 - [x] Helm Chart (charts 레포에 v0.1.0 퍼블리시 완료)
-- [ ] Gemini / OpenAI Adapter
+- [x] envtest 통합 테스트 + 단위 테스트 (61개)
+- [ ] Gemini Adapter
+- [ ] OpenAI Adapter
 - [ ] Cross-model consensus
-- [ ] envtest 통합 테스트
 
 ---
 
-## UI 완성 로드맵
+## UI 현황 및 로드맵
 
-### 공통
+### 에셋 규칙
 
-- [ ] 사이드바/헤더에 프로젝트 로고 표시 (`docs/images/logo.png` → `ui/public/logo.png`로 복사하여 사용)
-- [ ] 글로벌 에러 핸들링 (API 실패 시 토스트/배너)
-- [ ] 반응형 레이아웃 (모바일 대응)
+- 프로젝트 로고 원본: `docs/images/logo.png`
+- UI에서 사용하는 사본: `ui/public/logo.png` (사이드바 + favicon)
+- `ui/public/`에는 `logo.png`만 존재 — 불필요한 scaffold 에셋은 모두 삭제됨
 
-### Dashboard (현재: 기본 완성)
+### 구현 완료
 
-- [x] 정책 수, 체크 수, Pass/Warn/Fail 집계 카드
-- [x] 최근 스캔 결과 테이블 (10건)
-- [ ] 시계열 트렌드 차트 (Pass/Fail 추이)
-- [ ] 정책별 상태 요약 위젯 (한눈에 어떤 정책이 문제인지)
+- [x] **공통**: 사이드바 로고 (`logo.png`), ErrorBoundary, 다크 테마 디자인 시스템, 반응형 기본 대응
+- [x] **공통 컴포넌트**: Icons(12종), Badge, Card, Button, Modal, FormField, HealthRing, EmptyState/Spinner
+- [x] **유틸리티**: `utils/format.ts` — `timeAgo()`, `formatDuration()` (중복 제거 완료)
+- [x] **Dashboard**: stat 카드(5종), HealthRing, 정책별 상태 카드(progress bar), 최근 스캔 테이블(8건)
+- [x] **Policies**: 목록/상세, Run Now, Delete, **생성 폼 모달** (이름/NS/스케줄, LLM 프로바이더/모델, 체크 추가/삭제/severity, targetNamespaces)
+- [x] **Results**: 검색, 정책별/타입별/verdict별 필터, pagination(20건), 상세 expand/collapse all, reasoning + tool call evidence
+- [x] **Settings**: Form 모드 (General/Slack/GitHub/Jira 섹션별) + JSON 모드 토글, 토스트 알림
 
-### Policies (현재: 읽기/삭제만)
+### 미구현 (향후)
 
-- [x] 정책 목록 조회
-- [x] 정책 상세 보기 (스케줄, LLM 설정, 체크 목록)
-- [x] Run Now
-- [x] Delete
-- [ ] **정책 생성 폼** — 자연어 에디터 포함
-  - [ ] 기본 정보 입력 (이름, namespace, 스케줄)
-  - [ ] LLM 프로바이더/모델 선택
-  - [ ] 체크 항목 추가/삭제/순서 변경 (description은 자연어 자유 텍스트)
-  - [ ] severity 선택 (critical/warning/info)
-  - [ ] 알림 채널 설정 (Slack/GitHub/Jira)
-  - [ ] targetNamespaces 선택
-- [ ] **정책 편집 폼** — 생성 폼 재활용, 기존 값 프리필
+- [ ] 정책 편집 폼 (생성 폼 재활용, 기존 값 프리필)
 - [ ] 정책 YAML 미리보기 (생성/편집 시 최종 CR 확인용)
 - [ ] 정책 복제 (기존 정책 기반으로 새 정책 생성)
-
-### Results (현재: 기본 완성)
-
-- [x] 결과 목록 (시간순 정렬)
-- [x] 상세 보기 (verdict, reasoning, tool call evidence)
-- [ ] 정책별/namespace별 필터
-- [ ] verdict별 필터 (PASS/WARN/FAIL)
+- [ ] 시계열 트렌드 차트 (Pass/Fail 추이)
 - [ ] 결과 간 비교 (이전 스캔과 diff)
-
-### Settings (현재: raw JSON 에디터)
-
-- [x] JSON 텍스트 에디터로 설정 조회/수정
-- [ ] **구조화된 설정 폼**
-  - [ ] 알림 채널 관리 (Slack webhook, GitHub token, Jira 연동)
-  - [ ] 기본 LLM 프로바이더 설정
-  - [ ] escalation threshold 설정
 - [ ] 설정 변경 이력
 
 ### UI 구현 규칙
@@ -330,6 +318,7 @@ ui:
 - `checks[].description`은 자연어 자유 텍스트 — 에디터에서 구조화/파싱하지 말 것 (textarea 사용)
 - K8s API 직접 호출 금지 — 반드시 Go API Server(`/api/v1/...`)를 통할 것
 - 모든 mutation(생성/수정/삭제) 후 관련 query를 invalidate하여 UI 동기화
+- FormField/Card의 hover/focus 상태는 CSS 클래스 사용 (DOM event handler에서 style mutation 금지)
 
 ---
 
