@@ -46,11 +46,6 @@ jobs:
             ${{ env.OPERATOR_IMAGE }}:${{ steps.version.outputs.version }}
             ${{ env.OPERATOR_IMAGE }}:latest
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: operator/go.mod
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -60,20 +55,10 @@ jobs:
         working-directory: ui
         run: npm ci && npm run build
 
-      - name: Copy UI dist to embed
-        run: |
-          rm -rf operator/server/embed/dist
-          cp -r ui/dist operator/server/embed/dist
-
-      - name: Build server binary
-        working-directory: operator
-        run: |
-          CGO_ENABLED=0 go build -o bin/server ./server/main.go
-
       - name: Build and push server image
         uses: docker/build-push-action@v6
         with:
-          context: ./operator
+          context: .
           file: ./Dockerfile.server
           push: true
           platforms: linux/amd64,linux/arm64
