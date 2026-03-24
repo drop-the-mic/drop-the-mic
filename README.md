@@ -36,6 +36,7 @@ spec:
     failedRescan: "*/30 * * * *"    # Retry failures every 30 min
   llm:
     provider: claude
+    # model: "claude-opus-4-20250514"  # Optional — defaults to claude-sonnet-4-20250514
     secretRef:
       name: dtm-llm-secret
   checks:
@@ -163,11 +164,34 @@ ui:
 
 ### LLM Providers
 
-| Provider | Model Examples | Tool Call Method |
-|----------|---------------|-----------------|
-| Claude | claude-sonnet-4-20250514 | `tool_use` blocks |
-| Gemini | gemini-2.0-flash | `function_calling` |
-| OpenAI | gpt-4o | `function_calling` |
+| Provider | Status | Default Model | Tool Call Method |
+|----------|--------|---------------|-----------------|
+| **Claude** | Supported | `claude-sonnet-4-20250514` | `tool_use` blocks |
+| Gemini | Planned | — | `function_calling` |
+| OpenAI | Planned | — | `function_calling` |
+
+> **Note:** Currently only the Claude adapter is implemented. Gemini and OpenAI adapters are planned.
+
+#### Model Selection
+
+Each provider has a sensible default model, but you can override it per policy via `spec.llm.model`:
+
+```yaml
+spec:
+  llm:
+    provider: claude
+    model: "claude-opus-4-20250514"   # Optional — overrides the default
+    secretRef:
+      name: dtm-llm-secret
+```
+
+If `model` is omitted, the provider's default is used:
+
+| Provider | Default Model | Notes |
+|----------|--------------|-------|
+| Claude | `claude-sonnet-4-20250514` | Good balance of cost and capability for verification tasks |
+
+You can use any model the provider supports (e.g. `claude-haiku-4-5-20251001` for faster/cheaper checks, `claude-opus-4-20250514` for complex reasoning). The model choice affects verification quality, latency, and cost — pick based on your check complexity.
 
 ### Available Tools
 
