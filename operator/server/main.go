@@ -55,12 +55,21 @@ func main() {
 	mux.HandleFunc("GET /api/v1/settings", h.GetSettings)
 	mux.HandleFunc("PUT /api/v1/settings", h.UpdateSettings)
 
+	// Health check — exempt from auth and used by k8s probes.
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, "ok")
+	})
+
 	// Serve embedded UI
 	uiHandler := handler.NewUIHandler()
 	mux.Handle("/", uiHandler)
 
+	// Middleware chain: CORS → Basic Auth → mux
+	wrapped := corsMiddleware(handler.BasicAuthMiddleware(mux))
+
 	fmt.Fprintf(os.Stdout, "DTM API Server listening on %s\n", addr)
-	if err := http.ListenAndServe(addr, corsMiddleware(mux)); err != nil {
+	if err := http.ListenAndServe(addr, wrapped); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }

@@ -48,7 +48,10 @@ ui:
       name: ""
       namespace: ""
   auth:
-    enabled: false
+    enabled: true
     type: basic
+    username: admin
+    password: ""              # empty = random 22-char generated on install
+    existingSecret: ""        # use pre-existing secret instead of generating one
 
 namespace: dtm-system
