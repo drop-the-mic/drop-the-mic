@@ -1,0 +1,15 @@
+apiVersion: v2
+name: drop-the-mic
+description: Kubernetes-native AI Verification Operator
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - kubernetes
+  - operator
+  - llm
+  - verification
+  - checklist
+home: https://github.com/drop-the-mic/operator
+maintainers:
+  - name: DTM Team

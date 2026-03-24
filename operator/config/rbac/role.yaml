@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - dtm.dtm.io
+  resources:
+  - checklistpolicies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - dtm.dtm.io
+  resources:
+  - checklistpolicies/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - dtm.dtm.io
+  resources:
+  - checklistpolicies/status
+  verbs:
+  - get
+  - patch
+  - update

@@ -1,0 +1,39 @@
+# Binaries
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go
+vendor/
+
+# Operator build artifacts
+operator/bin/
+
+# UI
+ui/node_modules/
+ui/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / Secrets
+.env
+*.pem
+credentials.json
+
+# Test
+cover.out
+*.test
+
+# Helm
+charts/drop-the-mic/*.tgz
+operator/main
