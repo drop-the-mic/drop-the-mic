@@ -293,6 +293,62 @@ drop-the-mic/
 └── charts/            # Helm chart
 ```
 
+## Commit Convention
+
+This project follows [Conventional Commits](https://www.conventionalcommits.org/).
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+### Types
+
+| Type | Description |
+|------|-------------|
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `docs` | Documentation only |
+| `style` | Code style (formatting, no logic change) |
+| `refactor` | Code change that neither fixes a bug nor adds a feature |
+| `perf` | Performance improvement |
+| `test` | Adding or updating tests |
+| `build` | Build system or external dependencies |
+| `ci` | CI/CD configuration |
+| `chore` | Maintenance tasks (deps, tooling, etc.) |
+
+### Scopes
+
+| Scope | Area |
+|-------|------|
+| `operator` | Go Operator core |
+| `controller` | Controller reconcile loop |
+| `scheduler` | Dual-loop scheduler |
+| `engine` | Verification engine |
+| `llm` | LLM adapters |
+| `tool` | Cluster inspection tools |
+| `notify` | Notification channels |
+| `state` | Alert state machine |
+| `server` | Go API server |
+| `ui` | React frontend |
+| `chart` | Helm chart |
+| `crd` | CRD type definitions |
+
+Scope is optional but recommended. Breaking changes must include `!` after the scope or a `BREAKING CHANGE:` footer.
+
+### Examples
+
+```bash
+feat(llm): add Gemini adapter
+fix(scheduler): prevent duplicate rescan triggers
+docs: update README with commit conventions
+refactor(tool)!: rename tool package to singular form
+chore(deps): bump controller-runtime to v0.19.4
+```
+
 ## Inspired By
 
 - [k8sgpt](https://github.com/k8sgpt-ai/k8sgpt) — AI-powered Kubernetes troubleshooting
