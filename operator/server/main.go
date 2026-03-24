@@ -55,6 +55,10 @@ func main() {
 	mux.HandleFunc("GET /api/v1/settings", h.GetSettings)
 	mux.HandleFunc("PUT /api/v1/settings", h.UpdateSettings)
 
+	// Auth routes
+	mux.HandleFunc("POST /api/v1/login", handler.Login)
+	mux.HandleFunc("GET /api/v1/auth/check", handler.AuthCheck)
+
 	// Health check — exempt from auth and used by k8s probes.
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -65,8 +69,8 @@ func main() {
 	uiHandler := handler.NewUIHandler()
 	mux.Handle("/", uiHandler)
 
-	// Middleware chain: CORS → Basic Auth → mux
-	wrapped := corsMiddleware(handler.BasicAuthMiddleware(mux))
+	// Middleware chain: CORS → JWT Auth → mux
+	wrapped := corsMiddleware(handler.JWTAuthMiddleware(mux))
 
 	fmt.Fprintf(os.Stdout, "DTM API Server listening on %s\n", addr)
 	if err := http.ListenAndServe(addr, wrapped); err != nil {
