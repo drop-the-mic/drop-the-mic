@@ -14,7 +14,9 @@ func TestRegistry_RegisterAndCall(t *testing.T) {
 		Description: "A test tool",
 		Parameters:  []Parameter{{Name: "msg", Type: "string", Description: "message", Required: true}},
 	}, func(ctx context.Context, params json.RawMessage) (string, error) {
-		var p struct{ Msg string `json:"msg"` }
+		var p struct {
+			Msg string `json:"msg"`
+		}
 		if err := json.Unmarshal(params, &p); err != nil {
 			return "", err
 		}

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { ChecklistResult, CheckResult } from '../api/client';
+import { timeAgo, formatDuration } from '../utils/format';
 import { Card } from '../components/Card';
 import { Badge, VerdictBadge, SeverityBadge } from '../components/Badge';
 import { Button } from '../components/Button';
@@ -73,10 +74,11 @@ function Results() {
         <input
           className="toolbar-search"
           placeholder="Search results..."
+          aria-label="Search results"
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(0); }}
         />
-        <select className="toolbar-select" value={filterPolicy} onChange={e => { setFilterPolicy(e.target.value); setPage(0); }}>
+        <select className="toolbar-select" aria-label="Filter by policy" value={filterPolicy} onChange={e => { setFilterPolicy(e.target.value); setPage(0); }}>
           <option value="">All Policies</option>
           {policyNames.map(n => <option key={n} value={n}>{n}</option>)}
         </select>
@@ -331,24 +333,6 @@ function VerdictDot({ verdict }: { verdict: string }) {
       boxShadow: `0 0 6px ${colors[verdict] || 'transparent'}`,
     }} />
   );
-}
-
-function formatDuration(ms: number): string {
-  const secs = Math.floor(ms / 1000);
-  if (secs < 60) return `${secs}s`;
-  const mins = Math.floor(secs / 60);
-  const remainSecs = secs % 60;
-  return `${mins}m ${remainSecs}s`;
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 export default Results;

@@ -76,8 +76,8 @@ type claudeToolResultBlock struct {
 }
 
 type claudeResponse struct {
-	Content  []json.RawMessage `json:"content"`
-	StopReason string          `json:"stop_reason"`
+	Content    []json.RawMessage `json:"content"`
+	StopReason string            `json:"stop_reason"`
 }
 
 type contentBlock struct {

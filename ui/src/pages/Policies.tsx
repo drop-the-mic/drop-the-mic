@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { ChecklistPolicy, CheckItem } from '../api/client';
+import { timeAgo } from '../utils/format';
 import { Card } from '../components/Card';
 import { Badge, SeverityBadge } from '../components/Badge';
 import { Button } from '../components/Button';
@@ -404,16 +405,6 @@ function CreatePolicyModal({ open, onClose }: { open: boolean; onClose: () => vo
       </div>
     </Modal>
   );
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 export default Policies;

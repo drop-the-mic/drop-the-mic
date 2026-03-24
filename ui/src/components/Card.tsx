@@ -8,28 +8,28 @@ interface CardProps {
   hoverable?: boolean;
 }
 
-export function Card({ children, style, className, onClick, hoverable }: CardProps) {
+/** A styled container card. Uses CSS hover class instead of DOM event handlers. */
+export function Card({ children, style, className = '', onClick, hoverable }: CardProps) {
+  const isInteractive = onClick || hoverable;
   return (
     <div
-      className={className}
+      className={`${isInteractive ? 'card-hoverable' : ''} ${className}`}
       onClick={onClick}
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: 'var(--radius-lg)',
         padding: 20,
-        transition: 'var(--transition-fast)',
-        cursor: onClick || hoverable ? 'pointer' : undefined,
+        cursor: isInteractive ? 'pointer' : undefined,
         ...style,
       }}
-      onMouseEnter={e => { if (onClick || hoverable) (e.currentTarget.style.background = 'var(--bg-card-hover)'); }}
-      onMouseLeave={e => { if (onClick || hoverable) (e.currentTarget.style.background = 'var(--bg-card)'); }}
     >
       {children}
     </div>
   );
 }
 
+/** A compact stat display card with large number and label. */
 export function StatCard({ value, label, color }: { value: string | number; label: string; color?: string }) {
   return (
     <Card style={{ textAlign: 'center', padding: '24px 16px' }}>

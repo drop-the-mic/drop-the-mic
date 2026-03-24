@@ -254,6 +254,48 @@ tr:hover td {
   margin-bottom: 14px;
 }
 
+/* Form inputs — shared base class avoids inline style DOM mutations */
+.dtm-input {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 13px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--transition-fast);
+  font-family: inherit;
+}
+
+.dtm-input:focus {
+  border-color: var(--accent);
+}
+
+.dtm-textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.dtm-select {
+  cursor: pointer;
+}
+
+/* Hoverable card — CSS-only hover avoids event handler DOM mutations */
+.card-hoverable {
+  transition: background var(--transition-fast);
+}
+
+.card-hoverable:hover {
+  background: var(--bg-card-hover);
+}
+
+/* Chevron rotation for expand/collapse */
+.rotate-90 {
+  transform: rotate(90deg);
+  transition: transform var(--transition-fast);
+}
+
 /* Flex utils */
 .flex { display: flex; }
 .flex-col { flex-direction: column; }
