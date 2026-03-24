@@ -297,7 +297,7 @@ function CreatePolicyModal({ open, onClose }: { open: boolean; onClose: () => vo
     if (validChecks.length === 0) return;
 
     const policy: ChecklistPolicy = {
-      metadata: { name, namespace, creationTimestamp: '' },
+      metadata: { name, namespace } as ChecklistPolicy['metadata'],
       spec: {
         schedule: { fullScan, failedRescan: failedRescan || undefined },
         llm: { provider, model: model || undefined, secretRef: { name: secretName } },
