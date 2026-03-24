@@ -1,0 +1,54 @@
+operator:
+  image:
+    repository: ghcr.io/drop-the-mic/operator
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  llm:
+    provider: claude
+    secretRef: dtm-llm-secret
+  serviceAccount:
+    create: true
+    name: dtm-operator
+
+ui:
+  enabled: true
+  image:
+    repository: ghcr.io/drop-the-mic/server
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  service:
+    type: ClusterIP
+    port: 8090
+  serviceAccount:
+    create: true
+    name: dtm-ui
+  ingress:
+    enabled: false
+    className: nginx
+    host: dtm.example.com
+    annotations: {}
+  gateway:
+    enabled: false
+    gatewayRef:
+      name: ""
+      namespace: ""
+  auth:
+    enabled: false
+    type: basic
+
+namespace: dtm-system

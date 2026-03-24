@@ -1,0 +1,9 @@
+apiVersion: dtm.dtm.io/v1alpha1
+kind: ChecklistResult
+metadata:
+  labels:
+    app.kubernetes.io/name: drop-the-mic
+    app.kubernetes.io/managed-by: kustomize
+  name: checklistresult-sample
+spec:
+  # TODO(user): Add fields here
