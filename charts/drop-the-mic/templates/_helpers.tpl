@@ -32,3 +32,11 @@ app.kubernetes.io/name: dtm-operator
 app.kubernetes.io/component: ui
 app.kubernetes.io/name: dtm-ui
 {{- end }}
+
+{{- define "dtm.authSecretName" -}}
+{{- if .Values.ui.auth.existingSecret }}
+{{- .Values.ui.auth.existingSecret }}
+{{- else }}
+{{- printf "%s-auth" (include "dtm.fullname" .) }}
+{{- end }}
+{{- end }}
