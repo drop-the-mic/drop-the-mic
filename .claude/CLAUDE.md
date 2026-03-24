@@ -266,12 +266,70 @@ ui:
 - [ ] GitHub Issues 알림
 - [ ] Jira 알림
 - [ ] Go API Server
-- [ ] React UI (Dashboard, Policies, Results, Settings)
+- [~] React UI (아래 "UI 완성 로드맵" 참조)
 - [ ] Go embed 통합
 - [x] Helm Chart (charts 레포에 v0.1.0 퍼블리시 완료)
 - [ ] Gemini / OpenAI Adapter
 - [ ] Cross-model consensus
 - [ ] envtest 통합 테스트
+
+---
+
+## UI 완성 로드맵
+
+### 공통
+
+- [ ] 사이드바/헤더에 프로젝트 로고 표시 (`docs/images/logo.png` → `ui/public/logo.png`로 복사하여 사용)
+- [ ] 글로벌 에러 핸들링 (API 실패 시 토스트/배너)
+- [ ] 반응형 레이아웃 (모바일 대응)
+
+### Dashboard (현재: 기본 완성)
+
+- [x] 정책 수, 체크 수, Pass/Warn/Fail 집계 카드
+- [x] 최근 스캔 결과 테이블 (10건)
+- [ ] 시계열 트렌드 차트 (Pass/Fail 추이)
+- [ ] 정책별 상태 요약 위젯 (한눈에 어떤 정책이 문제인지)
+
+### Policies (현재: 읽기/삭제만)
+
+- [x] 정책 목록 조회
+- [x] 정책 상세 보기 (스케줄, LLM 설정, 체크 목록)
+- [x] Run Now
+- [x] Delete
+- [ ] **정책 생성 폼** — 자연어 에디터 포함
+  - [ ] 기본 정보 입력 (이름, namespace, 스케줄)
+  - [ ] LLM 프로바이더/모델 선택
+  - [ ] 체크 항목 추가/삭제/순서 변경 (description은 자연어 자유 텍스트)
+  - [ ] severity 선택 (critical/warning/info)
+  - [ ] 알림 채널 설정 (Slack/GitHub/Jira)
+  - [ ] targetNamespaces 선택
+- [ ] **정책 편집 폼** — 생성 폼 재활용, 기존 값 프리필
+- [ ] 정책 YAML 미리보기 (생성/편집 시 최종 CR 확인용)
+- [ ] 정책 복제 (기존 정책 기반으로 새 정책 생성)
+
+### Results (현재: 기본 완성)
+
+- [x] 결과 목록 (시간순 정렬)
+- [x] 상세 보기 (verdict, reasoning, tool call evidence)
+- [ ] 정책별/namespace별 필터
+- [ ] verdict별 필터 (PASS/WARN/FAIL)
+- [ ] 결과 간 비교 (이전 스캔과 diff)
+
+### Settings (현재: raw JSON 에디터)
+
+- [x] JSON 텍스트 에디터로 설정 조회/수정
+- [ ] **구조화된 설정 폼**
+  - [ ] 알림 채널 관리 (Slack webhook, GitHub token, Jira 연동)
+  - [ ] 기본 LLM 프로바이더 설정
+  - [ ] escalation threshold 설정
+- [ ] 설정 변경 이력
+
+### UI 구현 규칙
+
+- 로고 파일은 `docs/images/logo.png`가 원본, UI에서 사용할 때는 `ui/public/logo.png`로 복사
+- `checks[].description`은 자연어 자유 텍스트 — 에디터에서 구조화/파싱하지 말 것 (textarea 사용)
+- K8s API 직접 호출 금지 — 반드시 Go API Server(`/api/v1/...`)를 통할 것
+- 모든 mutation(생성/수정/삭제) 후 관련 query를 invalidate하여 UI 동기화
 
 ---
 
