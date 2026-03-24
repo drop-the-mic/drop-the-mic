@@ -1,3 +1,5 @@
+// Package tool provides the tool registry and built-in Kubernetes verification tools
+// that are exposed to the LLM during cluster checks.
 package tool
 
 import (
@@ -7,7 +9,7 @@ import (
 	"sync"
 )
 
-// Parameter describes a tool parameter.
+// Parameter describes a single parameter accepted by a tool.
 type Parameter struct {
 	Name        string `json:"name"`
 	Type        string `json:"type"`
@@ -15,17 +17,17 @@ type Parameter struct {
 	Required    bool   `json:"required"`
 }
 
-// Definition describes a tool that can be called by the LLM.
+// Definition describes a tool that the LLM can invoke via tool_use / function_calling.
 type Definition struct {
 	Name        string      `json:"name"`
 	Description string      `json:"description"`
 	Parameters  []Parameter `json:"parameters"`
 }
 
-// Func is the function signature for tool implementations.
+// Func is the execution signature every tool implementation must satisfy.
 type Func func(ctx context.Context, params json.RawMessage) (string, error)
 
-// Registry holds all registered tools.
+// Registry is a thread-safe store of tool definitions and their implementations.
 type Registry struct {
 	mu    sync.RWMutex
 	tools map[string]registeredTool

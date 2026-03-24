@@ -20,7 +20,10 @@ func New(c client.Client) *Handler {
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		// Log only — headers are already sent, so we can't change the status code.
+		http.Error(w, "", http.StatusInternalServerError)
+	}
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {
