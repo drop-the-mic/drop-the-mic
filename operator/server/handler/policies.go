@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -98,7 +97,7 @@ func (h *Handler) DeletePolicy(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	if err := h.client.Delete(context.Background(), policy); err != nil {
+	if err := h.client.Delete(r.Context(), policy); err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("deleting policy: %v", err))
 		return
 	}

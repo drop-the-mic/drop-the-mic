@@ -368,12 +368,50 @@ helm repo update
 helm install dtm dtm/drop-the-mic
 ```
 
-**자동 릴리즈**: `charts` 레포의 `main` 브랜치에 푸시하면 `chart-releaser-action`이 자동으로:
-1. `charts/drop-the-mic/Chart.yaml`의 버전 변경을 감지
-2. `.tgz` 패키징 → GitHub Release 생성
-3. `gh-pages` 브랜치의 `index.yaml` 업데이트
+### 릴리즈 파이프라인
 
-차트 버전을 올릴 때는 `charts/drop-the-mic/Chart.yaml`의 `version` 필드를 변경 후 `main`에 푸시하면 된다.
+차트 소스의 원본은 **메인 레포**(`drop-the-mic/drop-the-mic`)의 `charts/` 디렉토리다.
+charts 레포는 배포 전용이며 직접 수정하지 않는다.
+
+```
+태그 push (v*.*.*)
+  │
+  ▼  release.yaml (메인 레포 GitHub Action)
+  ├─ Docker 이미지 빌드 (operator + server)
+  │  └─ ghcr.io/drop-the-mic/operator:<version>
+  │  └─ ghcr.io/drop-the-mic/server:<version>
+  ├─ GitHub Release 생성 (자동 릴리즈 노트)
+  └─ Chart.yaml version/appVersion 업데이트 → charts 레포 동기화
+       │
+       ▼  release.yaml (charts 레포 chart-releaser-action)
+       GitHub Pages (gh-pages) → helm repo index 업데이트
+```
+
+**릴리즈 순서:**
+1. `develop`에서 기능 개발 완료
+2. `develop` → `main` PR 머지
+3. 태그 생성: `git tag v0.1.0 && git push origin v0.1.0`
+4. 이후 자동:
+   - Docker 이미지 빌드 + ghcr.io push
+   - GitHub Release 생성
+   - Chart version 업데이트 → charts 레포 동기화 → Helm repo 업데이트
+
+**chart 템플릿만 변경한 경우** (릴리즈 없이):
+`main`에 `charts/**` 변경이 푸시되면 `sync-charts.yaml`이 charts 레포에 자동 동기화한다.
+
+### CI Secrets
+
+| Secret | 레포 | 용도 |
+|--------|------|------|
+| `GITHUB_TOKEN` | 자동 제공 | GHCR push, GitHub Release 생성 |
+| `CHARTS_SYNC_TOKEN` | 메인 레포 | charts 레포에 push (PAT, Contents read/write) |
+
+### CI 워크플로우 파일
+
+| 파일 | 트리거 | 동작 |
+|------|--------|------|
+| `.github/workflows/release.yaml` | `v*` 태그 push | 이미지 빌드, Release 생성, charts 동기화 |
+| `.github/workflows/sync-charts.yaml` | `main` push (`charts/**`) | charts 레포에 템플릿 동기화 |
 
 ### 차트 구조 (charts 레포)
 

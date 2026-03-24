@@ -34,7 +34,7 @@ export function HealthRing({ pass, warn, fail, size = 120 }: HealthRingProps) {
 
   return (
     <div style={{ width: size, height: size, position: 'relative' }}>
-      <svg width={size} height={size} viewBox="0 0 120 120">
+      <svg width={size} height={size} viewBox="0 0 120 120" role="img" aria-label={`Health: ${pct}% passing, ${pass} pass, ${warn} warn, ${fail} fail`}>
         <circle cx="60" cy="60" r={radius} fill="none" stroke="var(--border)" strokeWidth="10" />
         {segments.map((seg, i) => (
           <circle

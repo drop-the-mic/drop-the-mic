@@ -21,6 +21,9 @@ export function Modal({ open, onClose, title, children, width = 560 }: ModalProp
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -49,6 +52,7 @@ export function Modal({ open, onClose, title, children, width = 560 }: ModalProp
           <h3 style={{ fontSize: 16, fontWeight: 600 }}>{title}</h3>
           <button
             onClick={onClose}
+            aria-label="Close dialog"
             style={{
               background: 'none', border: 'none', color: 'var(--text-tertiary)',
               cursor: 'pointer', padding: 4, borderRadius: 'var(--radius-sm)',

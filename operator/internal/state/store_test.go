@@ -102,8 +102,8 @@ func TestStore_Escalation(t *testing.T) {
 	s.RecordFail("p", "c")
 
 	// 3 more fails to hit threshold
-	s.RecordFail("p", "c") // retry 1, suppressed
-	s.RecordFail("p", "c") // retry 2, suppressed
+	s.RecordFail("p", "c")       // retry 1, suppressed
+	s.RecordFail("p", "c")       // retry 2, suppressed
 	tr := s.RecordFail("p", "c") // retry 3 → ESCALATED
 	if tr == nil {
 		t.Fatal("expected escalation transition")

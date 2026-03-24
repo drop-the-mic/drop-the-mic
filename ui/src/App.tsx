@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { IconDashboard, IconPolicy, IconResult, IconSettings } from './components/Icons';
 import Dashboard from './pages/Dashboard';
 import Policies from './pages/Policies';
@@ -56,12 +57,14 @@ function App() {
           </nav>
 
           <main className="main-content">
+            <ErrorBoundary>
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/policies" element={<Policies />} />
               <Route path="/results" element={<Results />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>
+            </ErrorBoundary>
           </main>
         </div>
       </BrowserRouter>
