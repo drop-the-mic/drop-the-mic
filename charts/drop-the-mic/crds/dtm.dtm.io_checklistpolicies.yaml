@@ -1,0 +1,353 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: checklistpolicies.dtm.dtm.io
+spec:
+  group: dtm.dtm.io
+  names:
+    kind: ChecklistPolicy
+    listKind: ChecklistPolicyList
+    plural: checklistpolicies
+    singular: checklistpolicy
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.llm.provider
+      name: Provider
+      type: string
+    - jsonPath: .status.summary.total
+      name: Checks
+      type: integer
+    - jsonPath: .status.summary.pass
+      name: Pass
+      type: integer
+    - jsonPath: .status.summary.fail
+      name: Fail
+      type: integer
+    - jsonPath: .status.lastFullScanTime
+      name: Last Scan
+      type: date
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ChecklistPolicy is the Schema for the checklistpolicies API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ChecklistPolicySpec defines the desired state of ChecklistPolicy.
+            properties:
+              checks:
+                description: checks is the list of checks to perform.
+                items:
+                  description: CheckItem defines a single check to be performed.
+                  properties:
+                    description:
+                      description: |-
+                        description is a free-form natural language description of the check.
+                        This is passed directly to the LLM without parsing or structuring.
+                      type: string
+                    id:
+                      description: id is a unique identifier for this check within
+                        the policy.
+                      type: string
+                    severity:
+                      default: warning
+                      description: severity indicates the importance of this check.
+                      enum:
+                      - critical
+                      - warning
+                      - info
+                      type: string
+                  required:
+                  - description
+                  - id
+                  type: object
+                minItems: 1
+                type: array
+              escalationThreshold:
+                default: 5
+                description: escalation defines how many consecutive failures trigger
+                  escalation.
+                format: int32
+                type: integer
+              llm:
+                description: llm defines the LLM provider configuration.
+                properties:
+                  model:
+                    description: model is the specific model to use (e.g., "claude-sonnet-4-20250514").
+                    type: string
+                  provider:
+                    description: provider is the LLM provider to use.
+                    enum:
+                    - claude
+                    - gemini
+                    - openai
+                    type: string
+                  secretRef:
+                    description: secretRef references a Secret containing the API
+                      key.
+                    properties:
+                      key:
+                        default: api-key
+                        description: key is the key within the Secret data.
+                        type: string
+                      name:
+                        description: name is the name of the Secret.
+                        type: string
+                    required:
+                    - name
+                    type: object
+                required:
+                - provider
+                - secretRef
+                type: object
+              notification:
+                description: notification defines notification channel settings.
+                properties:
+                  github:
+                    description: github configures GitHub Issues notifications.
+                    properties:
+                      labels:
+                        description: labels are labels to apply to created issues.
+                        items:
+                          type: string
+                        type: array
+                      owner:
+                        description: owner is the GitHub repository owner.
+                        type: string
+                      repo:
+                        description: repo is the GitHub repository name.
+                        type: string
+                      secretRef:
+                        description: secretRef references a Secret containing the
+                          GitHub token.
+                        properties:
+                          key:
+                            default: api-key
+                            description: key is the key within the Secret data.
+                            type: string
+                          name:
+                            description: name is the name of the Secret.
+                            type: string
+                        required:
+                        - name
+                        type: object
+                    required:
+                    - owner
+                    - repo
+                    - secretRef
+                    type: object
+                  jira:
+                    description: jira configures Jira ticket creation.
+                    properties:
+                      issueType:
+                        default: Bug
+                        description: issueType is the Jira issue type.
+                        type: string
+                      project:
+                        description: project is the Jira project key.
+                        type: string
+                      secretRef:
+                        description: secretRef references a Secret containing Jira
+                          credentials.
+                        properties:
+                          key:
+                            default: api-key
+                            description: key is the key within the Secret data.
+                            type: string
+                          name:
+                            description: name is the name of the Secret.
+                            type: string
+                        required:
+                        - name
+                        type: object
+                      url:
+                        description: url is the Jira instance URL.
+                        type: string
+                    required:
+                    - project
+                    - secretRef
+                    - url
+                    type: object
+                  slack:
+                    description: slack configures Slack notifications.
+                    properties:
+                      channel:
+                        description: channel is the Slack channel to send notifications
+                          to.
+                        type: string
+                      secretRef:
+                        description: secretRef references a Secret containing the
+                          Slack webhook URL or token.
+                        properties:
+                          key:
+                            default: api-key
+                            description: key is the key within the Secret data.
+                            type: string
+                          name:
+                            description: name is the name of the Secret.
+                            type: string
+                        required:
+                        - name
+                        type: object
+                    required:
+                    - channel
+                    - secretRef
+                    type: object
+                type: object
+              schedule:
+                description: schedule defines the dual-loop scan schedule.
+                properties:
+                  failedRescan:
+                    description: failedRescan is the cron expression for failed-only
+                      rescan schedule.
+                    type: string
+                  fullScan:
+                    description: fullScan is the cron expression for full scan schedule.
+                    type: string
+                required:
+                - fullScan
+                type: object
+              targetNamespaces:
+                description: |-
+                  targetNamespaces limits scanning to specific namespaces.
+                  If empty, scans all namespaces the operator has access to.
+                items:
+                  type: string
+                type: array
+            required:
+            - checks
+            - llm
+            - schedule
+            type: object
+          status:
+            description: ChecklistPolicyStatus defines the observed state of ChecklistPolicy.
+            properties:
+              conditions:
+                description: conditions represent the current state of the ChecklistPolicy.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              lastFullScanTime:
+                description: lastFullScanTime is the timestamp of the last full scan.
+                format: date-time
+                type: string
+              lastRescanTime:
+                description: lastRescanTime is the timestamp of the last failed-only
+                  rescan.
+                format: date-time
+                type: string
+              lastResultName:
+                description: lastResultName is the name of the most recent ChecklistResult.
+                type: string
+              summary:
+                description: summary contains aggregate pass/warn/fail counts from
+                  the last scan.
+                properties:
+                  fail:
+                    description: fail is the number of checks that failed.
+                    format: int32
+                    type: integer
+                  pass:
+                    description: pass is the number of checks that passed.
+                    format: int32
+                    type: integer
+                  total:
+                    description: total is the total number of checks.
+                    format: int32
+                    type: integer
+                  warn:
+                    description: warn is the number of checks with warnings.
+                    format: int32
+                    type: integer
+                required:
+                - fail
+                - pass
+                - total
+                - warn
+                type: object
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

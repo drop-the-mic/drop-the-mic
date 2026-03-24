@@ -1,0 +1,110 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  OPERATOR_IMAGE: ghcr.io/drop-the-mic/operator
+  SERVER_IMAGE: ghcr.io/drop-the-mic/server
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push operator image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./operator
+          file: ./operator/Dockerfile
+          push: true
+          no-cache: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.OPERATOR_IMAGE }}:${{ steps.version.outputs.version }}
+            ${{ env.OPERATOR_IMAGE }}:latest
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build UI
+        working-directory: ui
+        run: npm ci && npm run build
+
+      - name: Build and push server image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.server
+          push: true
+          no-cache: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.SERVER_IMAGE }}:${{ steps.version.outputs.version }}
+            ${{ env.SERVER_IMAGE }}:latest
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+
+  sync-charts:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Update chart version and appVersion
+        run: |
+          sed -i "s/^version:.*/version: ${{ steps.version.outputs.version }}/" charts/drop-the-mic/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"${{ steps.version.outputs.version }}\"/" charts/drop-the-mic/Chart.yaml
+
+      - name: Checkout charts repo
+        uses: actions/checkout@v4
+        with:
+          repository: drop-the-mic/charts
+          token: ${{ secrets.CHARTS_SYNC_TOKEN }}
+          path: charts-repo
+
+      - name: Sync charts
+        run: rsync -av --delete charts/drop-the-mic/ charts-repo/charts/drop-the-mic/
+
+      - name: Commit and push to charts repo
+        working-directory: charts-repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet && exit 0
+          git commit -m "release: drop-the-mic v${{ steps.version.outputs.version }}"
+          git push origin main

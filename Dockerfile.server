@@ -1,0 +1,19 @@
+FROM --platform=$BUILDPLATFORM golang:1.25 AS builder
+ARG TARGETOS=linux
+ARG TARGETARCH
+
+WORKDIR /workspace
+
+COPY operator/go.mod operator/go.sum ./
+RUN go mod download
+
+COPY operator/ .
+COPY ui/dist server/embed/dist/
+
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -a -o /out/server ./server/main.go
+
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /
+COPY --from=builder /out/server .
+USER 65532:65532
+ENTRYPOINT ["/server"]

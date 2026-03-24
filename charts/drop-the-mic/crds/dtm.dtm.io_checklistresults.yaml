@@ -1,0 +1,253 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: checklistresults.dtm.dtm.io
+spec:
+  group: dtm.dtm.io
+  names:
+    kind: ChecklistResult
+    listKind: ChecklistResultList
+    plural: checklistresults
+    singular: checklistresult
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.policyRef
+      name: Policy
+      type: string
+    - jsonPath: .spec.scanType
+      name: Type
+      type: string
+    - jsonPath: .spec.summary.pass
+      name: Pass
+      type: integer
+    - jsonPath: .spec.summary.fail
+      name: Fail
+      type: integer
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ChecklistResult is the Schema for the checklistresults API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ChecklistResultSpec defines the desired state of ChecklistResult.
+            properties:
+              checks:
+                description: checks contains the results for each check item.
+                items:
+                  description: CheckResult represents the result of a single check.
+                  properties:
+                    description:
+                      description: description is the original check description.
+                      type: string
+                    evidence:
+                      description: evidence contains the tool calls and their results.
+                      properties:
+                        toolCalls:
+                          description: toolCalls contains the tool calls made by the
+                            LLM during verification.
+                          items:
+                            description: ToolCallRecord stores information about a
+                              single tool call made by the LLM.
+                            properties:
+                              input:
+                                description: input is the input parameters passed
+                                  to the tool.
+                                type: object
+                                x-kubernetes-preserve-unknown-fields: true
+                              output:
+                                description: output is the raw response from the tool.
+                                type: string
+                              toolName:
+                                description: toolName is the name of the tool that
+                                  was called.
+                                type: string
+                            required:
+                            - input
+                            - output
+                            - toolName
+                            type: object
+                          type: array
+                      type: object
+                    failedSince:
+                      description: |-
+                        failedSince is the timestamp when this check first started failing.
+                        Used for deduplication of notifications.
+                      format: date-time
+                      type: string
+                    id:
+                      description: id matches the check ID from the ChecklistPolicy.
+                      type: string
+                    reasoning:
+                      description: reasoning is the LLM's explanation of the verdict.
+                      type: string
+                    severity:
+                      description: severity from the original check item.
+                      type: string
+                    verdict:
+                      description: verdict is the result of the check.
+                      enum:
+                      - PASS
+                      - WARN
+                      - FAIL
+                      type: string
+                  required:
+                  - description
+                  - id
+                  - reasoning
+                  - verdict
+                  type: object
+                type: array
+              completedAt:
+                description: completedAt is when the scan finished.
+                format: date-time
+                type: string
+              policyRef:
+                description: policyRef is the name of the ChecklistPolicy that generated
+                  this result.
+                type: string
+              scanType:
+                description: scanType indicates whether this was a full scan or a
+                  rescan.
+                enum:
+                - FullScan
+                - Rescan
+                type: string
+              startedAt:
+                description: startedAt is when the scan started.
+                format: date-time
+                type: string
+              summary:
+                description: summary contains aggregate counts.
+                properties:
+                  fail:
+                    description: fail is the number of checks that failed.
+                    format: int32
+                    type: integer
+                  pass:
+                    description: pass is the number of checks that passed.
+                    format: int32
+                    type: integer
+                  total:
+                    description: total is the total number of checks.
+                    format: int32
+                    type: integer
+                  warn:
+                    description: warn is the number of checks with warnings.
+                    format: int32
+                    type: integer
+                required:
+                - fail
+                - pass
+                - total
+                - warn
+                type: object
+            required:
+            - policyRef
+            - scanType
+            - startedAt
+            type: object
+          status:
+            description: ChecklistResultStatus defines the observed state of ChecklistResult.
+            properties:
+              conditions:
+                description: conditions represent the current state of the ChecklistResult.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              phase:
+                description: phase indicates the current phase of the result.
+                enum:
+                - Running
+                - Completed
+                - Failed
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
