@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import yaml from 'js-yaml';
 import { api } from '../api/client';
 import type { ChecklistPolicy, CheckItem } from '../api/client';
 import { timeAgo } from '../utils/format';
@@ -378,6 +379,7 @@ function PolicyFormModal({ open, onClose, editPolicy }: { open: boolean; onClose
     { id: 'check-1', description: '', severity: 'warning' },
   ]);
   const [initialized, setInitialized] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Prefill form when editing
   if (isEdit && open && !initialized) {
@@ -429,6 +431,24 @@ function PolicyFormModal({ open, onClose, editPolicy }: { open: boolean; onClose
     setSecretName('dtm-llm-secret'); setFullScan('0 */6 * * *'); setFailedRescan('*/30 * * * *');
     setTargetNsList([]); setChecks([{ id: 'check-1', description: '', severity: 'warning' }]);
     setInitialized(false);
+    setShowPreview(false);
+  };
+
+  const buildCR = () => {
+    const validChecks = checks.filter(c => c.id.trim() && c.description.trim());
+    const spec: Record<string, unknown> = {
+      schedule: { fullScan, ...(failedRescan ? { failedRescan } : {}) },
+      llm: { provider, ...(model ? { model } : {}), secretRef: { name: secretName } },
+      checks: validChecks.map(c => ({ id: c.id, description: c.description, severity: c.severity })),
+    };
+    if (targetNsList.length > 0) spec.targetNamespaces = targetNsList;
+
+    return {
+      apiVersion: 'dtm.dtm.io/v1alpha1',
+      kind: 'ChecklistPolicy',
+      metadata: { name: name || 'my-policy', namespace: namespace || defaultNs },
+      spec,
+    };
   };
 
   const addCheck = () => {
@@ -562,6 +582,36 @@ function PolicyFormModal({ open, onClose, editPolicy }: { open: boolean; onClose
             </Card>
           ))}
         </div>
+      </div>
+
+      {/* YAML Preview */}
+      <div style={{ marginBottom: 12 }}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowPreview(!showPreview)}
+          style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '4px 0' }}
+        >
+          {showPreview ? '▲ Hide YAML Preview' : '▼ Preview YAML'}
+        </Button>
+        {showPreview && (
+          <pre style={{
+            marginTop: 8,
+            padding: 14,
+            background: 'var(--bg-input)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            fontSize: 12,
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--text-primary)',
+            overflow: 'auto',
+            maxHeight: 260,
+            lineHeight: 1.6,
+            whiteSpace: 'pre',
+          }}>
+            {yaml.dump(buildCR(), { lineWidth: -1, noRefs: true, sortKeys: false })}
+          </pre>
+        )}
       </div>
 
       {mutation.isError && (

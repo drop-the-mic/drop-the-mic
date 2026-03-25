@@ -45,9 +45,9 @@ function Login() {
           <img
             src="/logo.png"
             alt="DTM"
-            width={48}
-            height={48}
-            style={{ borderRadius: 12, marginBottom: 12 }}
+            width={58}
+            height={58}
+            style={{ borderRadius: 14, marginBottom: 12 }}
           />
           <div style={{
             fontSize: 20,
