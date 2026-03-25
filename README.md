@@ -36,7 +36,7 @@ spec:
     failedRescan: "*/30 * * * *"    # Retry failures every 30 min
   llm:
     provider: claude
-    # model: "claude-opus-4-20250514"  # Optional — defaults to claude-sonnet-4-20250514
+    # model: "claude-opus-4-20250514"  # Optional — defaults to claude-haiku-4-5-20251001
     secretRef:
       name: dtm-llm-secret
   checks:
@@ -171,7 +171,7 @@ ui:
 
 | Provider | Status | Default Model | Tool Call Method |
 |----------|--------|---------------|-----------------|
-| **Claude** | Supported | `claude-sonnet-4-20250514` | `tool_use` blocks |
+| **Claude** | Supported | `claude-haiku-4-5-20251001` | `tool_use` blocks |
 | Gemini | Planned | — | `function_calling` |
 | OpenAI | Planned | — | `function_calling` |
 
@@ -194,7 +194,7 @@ If `model` is omitted, the provider's default is used:
 
 | Provider | Default Model | Notes |
 |----------|--------------|-------|
-| Claude | `claude-sonnet-4-20250514` | Good balance of cost and capability for verification tasks |
+| Claude | `claude-haiku-4-5-20251001` | Fast and cost-effective |
 
 You can use any model the provider supports (e.g. `claude-haiku-4-5-20251001` for faster/cheaper checks, `claude-opus-4-20250514` for complex reasoning). The model choice affects verification quality, latency, and cost — pick based on your check complexity.
 
@@ -250,7 +250,7 @@ notification:
     project: OPS
     issueType: Bug
     secretRef:
-      name: dtm-jira-secret
+      name: dtm-jira-secret    # Must contain keys: "email" and "token"
 ```
 </details>
 

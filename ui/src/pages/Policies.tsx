@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { ChecklistPolicy, CheckItem } from '../api/client';
 import { timeAgo } from '../utils/format';
+import { Combobox } from '../components/Combobox';
 import { Card } from '../components/Card';
 import { Badge, SeverityBadge } from '../components/Badge';
 import { Button } from '../components/Button';
@@ -359,6 +360,12 @@ function PolicyFormModal({ open, onClose, editPolicy }: { open: boolean; onClose
   });
   const defaultNs = info?.namespace || 'dtm-system';
 
+  const { data: clusterNamespaces = [], isLoading: nsLoading } = useQuery({
+    queryKey: ['cluster-namespaces'],
+    queryFn: () => api.listNamespaces(),
+    staleTime: 60_000,
+  });
+
   const [name, setName] = useState('');
   const [namespace, setNamespace] = useState('');
   const [provider, setProvider] = useState('claude');
@@ -366,7 +373,7 @@ function PolicyFormModal({ open, onClose, editPolicy }: { open: boolean; onClose
   const [secretName, setSecretName] = useState('dtm-llm-secret');
   const [fullScan, setFullScan] = useState('0 */6 * * *');
   const [failedRescan, setFailedRescan] = useState('*/30 * * * *');
-  const [targetNs, setTargetNs] = useState('');
+  const [targetNsList, setTargetNsList] = useState<string[]>([]);
   const [checks, setChecks] = useState<CheckItem[]>([
     { id: 'check-1', description: '', severity: 'warning' },
   ]);
@@ -382,7 +389,7 @@ function PolicyFormModal({ open, onClose, editPolicy }: { open: boolean; onClose
     setSecretName(p.spec.llm.secretRef.name);
     setFullScan(p.spec.schedule.fullScan);
     setFailedRescan(p.spec.schedule.failedRescan || '');
-    setTargetNs(p.spec.targetNamespaces?.join(', ') || '');
+    setTargetNsList(p.spec.targetNamespaces || []);
     setChecks(p.spec.checks.map(c => ({ ...c })));
     setInitialized(true);
   }
@@ -420,7 +427,7 @@ function PolicyFormModal({ open, onClose, editPolicy }: { open: boolean; onClose
   const resetForm = () => {
     setName(''); setNamespace(''); setProvider('claude'); setModel('');
     setSecretName('dtm-llm-secret'); setFullScan('0 */6 * * *'); setFailedRescan('*/30 * * * *');
-    setTargetNs(''); setChecks([{ id: 'check-1', description: '', severity: 'warning' }]);
+    setTargetNsList([]); setChecks([{ id: 'check-1', description: '', severity: 'warning' }]);
     setInitialized(false);
   };
 
@@ -446,7 +453,7 @@ function PolicyFormModal({ open, onClose, editPolicy }: { open: boolean; onClose
       schedule: { fullScan, failedRescan: failedRescan || undefined },
       llm: { provider, model: model || undefined, secretRef: { name: secretName } },
       checks: validChecks,
-      targetNamespaces: targetNs.trim() ? targetNs.split(',').map(s => s.trim()) : undefined,
+      targetNamespaces: targetNsList.length > 0 ? targetNsList : undefined,
     };
 
     if (isEdit) {
@@ -467,7 +474,14 @@ function PolicyFormModal({ open, onClose, editPolicy }: { open: boolean; onClose
           <Input value={name} onChange={e => setName(e.target.value)} placeholder="my-policy" disabled={isEdit} />
         </FormField>
         <FormField label={<>Namespace <HelpTooltip text="The Kubernetes namespace where this Policy CRD will be created. Leave empty to use the namespace where DTM is deployed." /></>}>
-          <Input value={namespace} onChange={e => setNamespace(e.target.value)} placeholder={defaultNs} disabled={isEdit} />
+          <Combobox
+            options={clusterNamespaces}
+            value={namespace ? [namespace] : []}
+            onChange={v => setNamespace(v[0] || '')}
+            placeholder={defaultNs}
+            disabled={isEdit}
+            loading={nsLoading}
+          />
         </FormField>
       </div>
 
@@ -480,7 +494,7 @@ function PolicyFormModal({ open, onClose, editPolicy }: { open: boolean; onClose
           </Select>
         </FormField>
         <FormField label="Model (optional)">
-          <Input value={model} onChange={e => setModel(e.target.value)} placeholder="claude-sonnet-4-20250514" />
+          <Input value={model} onChange={e => setModel(e.target.value)} placeholder="claude-haiku-4-5-20251001" />
         </FormField>
         <FormField label={<>Secret Name <HelpTooltip text="Name of the Kubernetes Secret containing the LLM API key. Must be in the same namespace as the Policy." /></>}>
           <Input value={secretName} onChange={e => setSecretName(e.target.value)} />
@@ -497,7 +511,14 @@ function PolicyFormModal({ open, onClose, editPolicy }: { open: boolean; onClose
       </div>
 
       <FormField label={<>Target Namespaces <HelpTooltip text="Namespaces the LLM will inspect. Leave empty to scan all accessible namespaces." /></>}>
-        <Input value={targetNs} onChange={e => setTargetNs(e.target.value)} placeholder="default, kube-system" />
+        <Combobox
+          options={clusterNamespaces}
+          value={targetNsList}
+          onChange={setTargetNsList}
+          multi
+          placeholder="Select namespaces..."
+          loading={nsLoading}
+        />
       </FormField>
 
       {/* Checks Editor */}

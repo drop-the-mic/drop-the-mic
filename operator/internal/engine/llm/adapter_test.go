@@ -18,6 +18,14 @@ func (m *MockAdapter) Verify(ctx context.Context, req VerifyRequest, callTool To
 	return VerifyResponse{Verdict: VerdictPass, Reasoning: "mock pass"}, nil
 }
 
+func (m *MockAdapter) BatchVerify(ctx context.Context, req BatchVerifyRequest, callTool ToolCaller) ([]VerifyResponse, error) {
+	results := make([]VerifyResponse, len(req.Checks))
+	for i := range req.Checks {
+		results[i] = VerifyResponse{Verdict: VerdictPass, Reasoning: "mock batch pass"}
+	}
+	return results, nil
+}
+
 // Verify MockAdapter satisfies the interface
 var _ Adapter = (*MockAdapter)(nil)
 

@@ -14,7 +14,7 @@ import (
 
 const (
 	claudeAPIURL       = "https://api.anthropic.com/v1/messages"
-	claudeDefaultModel = "claude-sonnet-4-20250514"
+	claudeDefaultModel = "claude-haiku-4-5-20251001"
 	anthropicVersion   = "2023-06-01"
 )
 
@@ -38,12 +38,22 @@ func NewClaudeAdapter(apiKey, model string) *ClaudeAdapter {
 }
 
 // Claude API types
+type claudeCacheControl struct {
+	Type string `json:"type"`
+}
+
+type claudeSystemBlock struct {
+	Type         string              `json:"type"`
+	Text         string              `json:"text"`
+	CacheControl *claudeCacheControl `json:"cache_control,omitempty"`
+}
+
 type claudeRequest struct {
-	Model     string          `json:"model"`
-	MaxTokens int             `json:"max_tokens"`
-	System    string          `json:"system"`
-	Messages  []claudeMessage `json:"messages"`
-	Tools     []claudeTool    `json:"tools,omitempty"`
+	Model     string              `json:"model"`
+	MaxTokens int                 `json:"max_tokens"`
+	System    []claudeSystemBlock `json:"system"`
+	Messages  []claudeMessage     `json:"messages"`
+	Tools     []claudeTool        `json:"tools,omitempty"`
 }
 
 type claudeMessage struct {
@@ -86,7 +96,14 @@ type contentBlock struct {
 
 func (a *ClaudeAdapter) Verify(ctx context.Context, req VerifyRequest, callTool ToolCaller) (VerifyResponse, error) {
 	tools := convertTools(req.Tools)
-	systemPrompt := buildSystemPrompt(req.Namespace)
+	systemBlocks := buildSystemBlocks(req.Namespaces)
+
+	userText := fmt.Sprintf("Please verify the following check and determine if it PASSES, has WARNINGS, or FAILS.\n\nCheck ID: %s\nCheck Description: %s\n\nUse the available tools to gather evidence from the Kubernetes cluster, then provide your verdict as exactly one of: PASS, WARN, or FAIL, along with your reasoning.",
+		req.CheckID, req.Description)
+
+	if req.Snapshot != "" {
+		userText += fmt.Sprintf("\n\n## Pre-collected Cluster Snapshot\nThe following data was already gathered. Use it as a starting point — call additional tools only if needed.\n\n%s", req.Snapshot)
+	}
 
 	messages := []claudeMessage{
 		{
@@ -94,8 +111,7 @@ func (a *ClaudeAdapter) Verify(ctx context.Context, req VerifyRequest, callTool 
 			Content: []interface{}{
 				claudeTextBlock{
 					Type: "text",
-					Text: fmt.Sprintf("Please verify the following check and determine if it PASSES, has WARNINGS, or FAILS.\n\nCheck ID: %s\nCheck Description: %s\n\nUse the available tools to gather evidence from the Kubernetes cluster, then provide your verdict as exactly one of: PASS, WARN, or FAIL, along with your reasoning.",
-						req.CheckID, req.Description),
+					Text: userText,
 				},
 			},
 		},
@@ -107,7 +123,7 @@ func (a *ClaudeAdapter) Verify(ctx context.Context, req VerifyRequest, callTool 
 		resp, err := a.callAPI(ctx, claudeRequest{
 			Model:     a.model,
 			MaxTokens: 4096,
-			System:    systemPrompt,
+			System:    systemBlocks,
 			Messages:  messages,
 			Tools:     tools,
 		})
@@ -137,6 +153,70 @@ func (a *ClaudeAdapter) Verify(ctx context.Context, req VerifyRequest, callTool 
 	}
 
 	return VerifyResponse{}, fmt.Errorf("exceeded maximum tool call iterations")
+}
+
+// BatchVerify sends multiple checks in a single LLM call and parses per-check verdicts.
+func (a *ClaudeAdapter) BatchVerify(ctx context.Context, req BatchVerifyRequest, callTool ToolCaller) ([]VerifyResponse, error) {
+	tools := convertTools(req.Tools)
+	systemBlocks := buildSystemBlocks(req.Namespaces)
+
+	var sb strings.Builder
+	sb.WriteString("You will verify multiple checks against a Kubernetes cluster. For EACH check, provide a verdict.\n\n")
+
+	if req.Snapshot != "" {
+		sb.WriteString("## Pre-collected Cluster Snapshot\n")
+		sb.WriteString(req.Snapshot)
+		sb.WriteString("\n\n")
+	}
+
+	for i, check := range req.Checks {
+		sb.WriteString(fmt.Sprintf("### Check %d\n- ID: %s\n- Description: %s\n\n", i+1, check.CheckID, check.Description))
+	}
+
+	sb.WriteString("For each check, output a line in exactly this format:\nCHECK <id>: VERDICT: PASS|WARN|FAIL\nFollowed by your reasoning.\n")
+
+	messages := []claudeMessage{
+		{
+			Role:    "user",
+			Content: []interface{}{claudeTextBlock{Type: "text", Text: sb.String()}},
+		},
+	}
+
+	var allToolCalls []ToolCallRecord
+
+	for iterations := 0; iterations < 10; iterations++ {
+		resp, err := a.callAPI(ctx, claudeRequest{
+			Model:     a.model,
+			MaxTokens: 4096,
+			System:    systemBlocks,
+			Messages:  messages,
+			Tools:     tools,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("claude batch API call: %w", err)
+		}
+
+		if resp.StopReason == "end_turn" || resp.StopReason == "stop" {
+			return parseBatchVerdicts(resp, req.Checks, allToolCalls)
+		}
+
+		if resp.StopReason == "tool_use" {
+			assistantContent, toolResults, toolCalls, err := a.processToolUse(ctx, resp, callTool)
+			if err != nil {
+				return nil, fmt.Errorf("processing tool use in batch: %w", err)
+			}
+			allToolCalls = append(allToolCalls, toolCalls...)
+			messages = append(messages,
+				claudeMessage{Role: "assistant", Content: assistantContent},
+				claudeMessage{Role: "user", Content: toolResults},
+			)
+			continue
+		}
+
+		return parseBatchVerdicts(resp, req.Checks, allToolCalls)
+	}
+
+	return nil, fmt.Errorf("exceeded maximum tool call iterations in batch")
 }
 
 func (a *ClaudeAdapter) callAPI(ctx context.Context, req claudeRequest) (*claudeResponse, error) {
@@ -261,7 +341,11 @@ func buildJSONSchema(params []tool.Parameter) json.RawMessage {
 	return data
 }
 
-func buildSystemPrompt(namespace string) string {
+func buildSystemPrompt(namespaces []string) string {
+	nsText := "all namespaces"
+	if len(namespaces) > 0 {
+		nsText = strings.Join(namespaces, ", ")
+	}
 	return fmt.Sprintf(`You are a Kubernetes cluster verification agent. Your job is to verify checks against a live Kubernetes cluster using the provided tools.
 
 Rules:
@@ -270,9 +354,19 @@ Rules:
 3. Your final response MUST contain exactly one verdict line in this format: VERDICT: PASS, VERDICT: WARN, or VERDICT: FAIL
 4. Provide clear reasoning explaining why you reached your verdict.
 5. You are operating in a read-only capacity. You cannot modify the cluster.
-6. Default namespace context: %s
+6. Target namespace(s): %s
 
-Be thorough but efficient - use the minimum number of tool calls needed to verify the check.`, namespace)
+Be thorough but efficient - use the minimum number of tool calls needed to verify the check.`, nsText)
+}
+
+func buildSystemBlocks(namespaces []string) []claudeSystemBlock {
+	return []claudeSystemBlock{
+		{
+			Type:         "text",
+			Text:         buildSystemPrompt(namespaces),
+			CacheControl: &claudeCacheControl{Type: "ephemeral"},
+		},
+	}
 }
 
 func parseVerdict(resp *claudeResponse, toolCalls []ToolCallRecord) (VerifyResponse, error) {
@@ -307,4 +401,62 @@ func parseVerdict(resp *claudeResponse, toolCalls []ToolCallRecord) (VerifyRespo
 		Reasoning: text,
 		ToolCalls: toolCalls,
 	}, nil
+}
+
+// parseBatchVerdicts extracts per-check verdicts from a batch response.
+func parseBatchVerdicts(resp *claudeResponse, checks []VerifyRequest, toolCalls []ToolCallRecord) ([]VerifyResponse, error) {
+	var fullText strings.Builder
+	for _, raw := range resp.Content {
+		var block contentBlock
+		if err := json.Unmarshal(raw, &block); err != nil {
+			continue
+		}
+		if block.Type == "text" {
+			var tb claudeTextBlock
+			if err := json.Unmarshal(raw, &tb); err == nil {
+				fullText.WriteString(tb.Text)
+			}
+		}
+	}
+
+	text := fullText.String()
+	upperText := strings.ToUpper(text)
+
+	results := make([]VerifyResponse, len(checks))
+	for i, check := range checks {
+		// Look for CHECK <id>: VERDICT: PASS/WARN/FAIL
+		marker := strings.ToUpper(fmt.Sprintf("CHECK %s: VERDICT:", check.CheckID))
+		verdict := VerdictFail
+		if idx := strings.Index(upperText, marker); idx >= 0 {
+			after := upperText[idx+len(marker):]
+			after = strings.TrimSpace(after)
+			if strings.HasPrefix(after, "PASS") {
+				verdict = VerdictPass
+			} else if strings.HasPrefix(after, "WARN") {
+				verdict = VerdictWarn
+			}
+		} else {
+			// Fallback: look for simple "VERDICT:" pattern near check ID
+			idMarker := strings.ToUpper(check.CheckID)
+			if idx := strings.Index(upperText, idMarker); idx >= 0 {
+				remaining := upperText[idx:]
+				if vi := strings.Index(remaining, "VERDICT:"); vi >= 0 {
+					after := strings.TrimSpace(remaining[vi+8:])
+					if strings.HasPrefix(after, "PASS") {
+						verdict = VerdictPass
+					} else if strings.HasPrefix(after, "WARN") {
+						verdict = VerdictWarn
+					}
+				}
+			}
+		}
+
+		results[i] = VerifyResponse{
+			Verdict:   verdict,
+			Reasoning: text,
+			ToolCalls: toolCalls,
+		}
+	}
+
+	return results, nil
 }

@@ -27,6 +27,21 @@ func (m *mockAdapter) Verify(ctx context.Context, req llm.VerifyRequest, callToo
 	return llm.VerifyResponse{Verdict: llm.VerdictPass, Reasoning: "default pass"}, nil
 }
 
+func (m *mockAdapter) BatchVerify(ctx context.Context, req llm.BatchVerifyRequest, callTool llm.ToolCaller) ([]llm.VerifyResponse, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	results := make([]llm.VerifyResponse, 0, len(req.Checks))
+	for _, check := range req.Checks {
+		if resp, ok := m.responses[check.CheckID]; ok {
+			results = append(results, resp)
+		} else {
+			results = append(results, llm.VerifyResponse{Verdict: llm.VerdictPass, Reasoning: "default pass"})
+		}
+	}
+	return results, nil
+}
+
 func TestEngine_RunChecks_AllPass(t *testing.T) {
 	adapter := &mockAdapter{
 		responses: map[string]llm.VerifyResponse{

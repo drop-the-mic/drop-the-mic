@@ -22,7 +22,8 @@ type VerifyRequest struct {
 	CheckID     string
 	Description string
 	Tools       []tool.Definition
-	Namespace   string
+	Namespaces  []string
+	Snapshot    string // Pre-collected cluster data to reduce tool call round-trips.
 }
 
 // ToolCallRecord stores a single tool invocation and its result.
@@ -39,9 +40,18 @@ type VerifyResponse struct {
 	ToolCalls []ToolCallRecord
 }
 
+// BatchVerifyRequest groups multiple checks into a single LLM call.
+type BatchVerifyRequest struct {
+	Checks     []VerifyRequest
+	Tools      []tool.Definition
+	Namespaces []string
+	Snapshot   string
+}
+
 // Adapter is the interface all LLM implementations must satisfy.
 type Adapter interface {
 	Verify(ctx context.Context, req VerifyRequest, callTool ToolCaller) (VerifyResponse, error)
+	BatchVerify(ctx context.Context, req BatchVerifyRequest, callTool ToolCaller) ([]VerifyResponse, error)
 }
 
 // ToolCaller is a function that executes a tool and returns its output.

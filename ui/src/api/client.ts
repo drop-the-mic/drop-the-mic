@@ -110,6 +110,12 @@ export interface ChecklistResult {
   status?: { phase: string };
 }
 
+export interface ClusterResource {
+  kind: string;
+  name: string;
+  ready: string;
+}
+
 export const api = {
   login: (username: string, password: string) =>
     request<{ token: string }>('/login', {
@@ -120,6 +126,11 @@ export const api = {
   authCheck: () => request<{ status: string }>('/auth/check'),
 
   getInfo: () => request<{ namespace: string }>('/info'),
+
+  listNamespaces: () => request<string[]>('/cluster/namespaces'),
+
+  listResources: (ns?: string) =>
+    request<ClusterResource[]>(`/cluster/resources${ns ? `?ns=${ns}` : ''}`),
 
   listPolicies: (namespace?: string) =>
     request<ChecklistPolicy[]>(`/policies${namespace ? `?namespace=${namespace}` : ''}`),

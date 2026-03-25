@@ -54,13 +54,23 @@ func TestConvertTools(t *testing.T) {
 }
 
 func TestBuildSystemPrompt(t *testing.T) {
-	prompt := buildSystemPrompt("kube-system")
+	prompt := buildSystemPrompt([]string{"kube-system", "default"})
 	if len(prompt) == 0 {
 		t.Fatal("expected non-empty system prompt")
 	}
-	// Should contain the namespace
+	// Should contain the namespaces
 	if !contains(prompt, "kube-system") {
-		t.Fatal("expected namespace in system prompt")
+		t.Fatal("expected kube-system in system prompt")
+	}
+	if !contains(prompt, "default") {
+		t.Fatal("expected default in system prompt")
+	}
+}
+
+func TestBuildSystemPrompt_NilNamespaces(t *testing.T) {
+	prompt := buildSystemPrompt(nil)
+	if !contains(prompt, "all namespaces") {
+		t.Fatal("expected 'all namespaces' when namespaces is nil")
 	}
 }
 

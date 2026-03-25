@@ -4,7 +4,10 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.1
+    "helm.sh/resource-policy": keep
   name: checklistresults.dtm.dtm.io
+  labels:
+    {{- include "dtm.labels" . | nindent 4 }}
 spec:
   group: dtm.dtm.io
   names:

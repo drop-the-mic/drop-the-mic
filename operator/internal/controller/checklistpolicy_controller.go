@@ -310,14 +310,30 @@ func (r *ChecklistPolicyReconciler) buildDispatcher(ctx context.Context, policy 
 	}
 
 	if jira := policy.Spec.Notification.Jira; jira != nil {
-		token, err := r.resolveSecret(ctx, policy.Namespace, jira.SecretRef)
+		email, token, err := r.resolveJiraSecret(ctx, policy.Namespace, jira.SecretRef)
 		if err != nil {
 			return nil, fmt.Errorf("resolving jira secret: %w", err)
 		}
-		notifiers = append(notifiers, notify.NewJiraNotifier(jira.URL, "", token, jira.Project, jira.IssueType))
+		notifiers = append(notifiers, notify.NewJiraNotifier(jira.URL, email, token, jira.Project, jira.IssueType))
 	}
 
 	return notify.NewDispatcher(notifiers...), nil
+}
+
+// resolveJiraSecret reads both "email" and "token" keys from a Jira secret.
+func (r *ChecklistPolicyReconciler) resolveJiraSecret(ctx context.Context, namespace string, ref dtmv1alpha1.SecretReference) (string, string, error) {
+	var secret corev1.Secret
+	if err := r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: ref.Name}, &secret); err != nil {
+		return "", "", fmt.Errorf("getting jira secret %s: %w", ref.Name, err)
+	}
+
+	email := string(secret.Data["email"])
+	token := string(secret.Data["token"])
+	if token == "" {
+		return "", "", fmt.Errorf("key \"token\" not found in jira secret %s", ref.Name)
+	}
+
+	return email, token, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -55,6 +55,9 @@ func main() {
 	mux.HandleFunc("GET /api/v1/settings", h.GetSettings)
 	mux.HandleFunc("PUT /api/v1/settings", h.UpdateSettings)
 
+	mux.HandleFunc("GET /api/v1/cluster/namespaces", h.ListNamespaces)
+	mux.HandleFunc("GET /api/v1/cluster/resources", h.ListResources)
+
 	// Info route — returns server's namespace
 	podNamespace := detectNamespace()
 	mux.HandleFunc("GET /api/v1/info", func(w http.ResponseWriter, r *http.Request) {
