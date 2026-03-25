@@ -47,6 +47,9 @@ ui:
     gatewayRef:
       name: ""
       namespace: ""
+      sectionName: ""       # target a specific Gateway listener by name
+    hostname: ""             # e.g. dtm.example.com (optional, omit for catch-all)
+    annotations: {}
   auth:
     enabled: true
     type: basic
