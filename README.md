@@ -36,7 +36,7 @@ spec:
     failedRescan: "*/30 * * * *"    # Retry failures every 30 min
   llm:
     provider: claude
-    # model: "claude-opus-4-20250514"  # Optional — defaults to claude-haiku-4-5-20251001
+    # model: "claude-sonnet-4-20250514"  # Optional — defaults to Haiku (fast & cheap)
     secretRef:
       name: dtm-llm-secret
   checks:
@@ -61,8 +61,8 @@ spec:
 ```
 ┌─────────────────┐     ┌──────────────┐     ┌─────────────┐
 │ ChecklistPolicy │────▶│   Operator   │────▶│     LLM     │
-│   (Your rules)  │     │  Controller  │     │  (Claude /  │
-└─────────────────┘     └──────┬───────┘     │ Gemini/GPT) │
+│   (Your rules)  │     │  Controller  │     │  (Claude)   │
+└─────────────────┘     └──────┬───────┘     │             │
                                │             └──────┬──────┘
                                │                    │
                         ┌──────▼───────┐     ┌──────▼──────┐
@@ -109,23 +109,144 @@ The LLM **never writes** to your cluster. All tool calls are strictly read-only 
 
 - Kubernetes cluster (v1.28+)
 - Helm v3
-- An LLM API key (Claude, Gemini, or OpenAI)
+- A Claude API key ([get one here](https://console.anthropic.com/))
 
 ### Installation
 
 ```bash
-# Add the Helm repo
+# 1. Add the Helm repo
 helm repo add dtm https://drop-the-mic.github.io/charts
 helm repo update
 
-# Create the LLM API key secret
-kubectl create secret generic dtm-llm-secret \
-  --from-literal=api-key=<YOUR_API_KEY>
-
-# Install DTM
+# 2. Install DTM
 helm install dtm dtm/drop-the-mic \
-  --set operator.llm.provider=claude \
-  --set operator.llm.secretRef=dtm-llm-secret
+  --namespace dtm-system --create-namespace \
+  --set operator.image.tag=1.1.0 \
+  --set ui.image.tag=1.1.0 \
+  --set 'ui.auth.password=<YOUR_PASSWORD>'
+
+# 3. Create the LLM API key secret (can be done after install)
+kubectl create secret generic dtm-llm-secret \
+  -n dtm-system \
+  --from-literal=api-key=<YOUR_CLAUDE_API_KEY>
+
+# 4. Access the Web UI
+kubectl port-forward -n dtm-system svc/dtm-drop-the-mic-ui 8090:8090
+# Open http://localhost:8090 — login with admin / <YOUR_PASSWORD>
+```
+
+> **Tip:** The LLM Secret can be created before or after installation. Without it, the operator logs `secret not found` and retries automatically until the secret is available.
+>
+> The UI password is optional — if omitted, a random 22-character password is generated. Retrieve it with:
+> ```bash
+> kubectl get secret dtm-drop-the-mic-auth -n dtm-system -o jsonpath="{.data.password}" | base64 -d
+> ```
+
+### Create Your First Policy
+
+Once installed, open the Web UI and click **New Policy**, or apply a YAML directly:
+
+```bash
+kubectl apply -f - <<EOF
+apiVersion: dtm.dtm.io/v1alpha1
+kind: ChecklistPolicy
+metadata:
+  name: my-first-check
+  namespace: dtm-system
+spec:
+  schedule:
+    fullScan: "0 */6 * * *"
+  llm:
+    provider: claude
+    secretRef:
+      name: dtm-llm-secret
+  checks:
+    - id: pod-health
+      description: "Check if any pods are in CrashLoopBackOff or Error state"
+      severity: critical
+EOF
+```
+
+The operator will run this check every 6 hours. Click **Run Now** in the UI to trigger it immediately.
+
+### Ingress / Gateway
+
+<details>
+<summary><strong>Nginx Ingress</strong></summary>
+
+```bash
+helm install dtm dtm/drop-the-mic \
+  --namespace dtm-system --create-namespace \
+  --set ui.ingress.enabled=true \
+  --set ui.ingress.className=nginx \
+  --set ui.ingress.host=dtm.example.com
+```
+</details>
+
+<details>
+<summary><strong>Gateway API (Istio, Envoy, etc.)</strong></summary>
+
+```bash
+helm install dtm dtm/drop-the-mic \
+  --namespace dtm-system --create-namespace \
+  --set ui.gateway.enabled=true \
+  --set ui.gateway.gatewayRef.name=my-gateway \
+  --set ui.gateway.gatewayRef.namespace=istio-system
+```
+</details>
+
+<details>
+<summary><strong>NodePort (no ingress)</strong></summary>
+
+```bash
+helm install dtm dtm/drop-the-mic \
+  --namespace dtm-system --create-namespace \
+  --set ui.service.type=NodePort
+```
+
+Access via `http://<node-ip>:<node-port>`.
+</details>
+
+### Custom Values File
+
+For production deployments, create a `values-production.yaml`:
+
+```yaml
+operator:
+  image:
+    tag: "1.1.0"
+  llm:
+    provider: claude
+    secretRef: dtm-llm-secret
+  resources:
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+ui:
+  image:
+    tag: "1.1.0"
+  auth:
+    enabled: true
+    password: ""          # Random generated — retrieve with kubectl
+  ingress:
+    enabled: true
+    className: nginx
+    host: dtm.example.com
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    tls:
+      - secretName: dtm-tls
+        hosts:
+          - dtm.example.com
+```
+
+Then install with:
+
+```bash
+helm install dtm dtm/drop-the-mic \
+  --namespace dtm-system --create-namespace \
+  -f values-production.yaml
 ```
 
 ### From Source
@@ -149,7 +270,7 @@ make helm-package  # Package Helm chart
 operator:
   image: ghcr.io/drop-the-mic/operator:latest
   llm:
-    provider: claude          # claude | gemini | openai
+    provider: claude          # Currently only claude is supported
     secretRef: dtm-llm-secret
 
 ui:
@@ -185,7 +306,7 @@ Each provider has a sensible default model, but you can override it per policy v
 spec:
   llm:
     provider: claude
-    model: "claude-opus-4-20250514"   # Optional — overrides the default
+    model: "claude-sonnet-4-20250514"   # Optional — overrides the default
     secretRef:
       name: dtm-llm-secret
 ```
@@ -194,9 +315,15 @@ If `model` is omitted, the provider's default is used:
 
 | Provider | Default Model | Notes |
 |----------|--------------|-------|
-| Claude | `claude-haiku-4-5-20251001` | Fast and cost-effective |
+| Claude | `claude-haiku-4-5-20251001` | Fast and cost-effective for most verification tasks |
 
-You can use any model the provider supports (e.g. `claude-haiku-4-5-20251001` for faster/cheaper checks, `claude-opus-4-20250514` for complex reasoning). The model choice affects verification quality, latency, and cost — pick based on your check complexity.
+You can use any Claude model:
+
+| Model | Use Case | Cost |
+|-------|----------|------|
+| `claude-haiku-4-5-20251001` | Default — fast, cheap, good for most checks | $ |
+| `claude-sonnet-4-20250514` | Better reasoning for complex checks | $$ |
+| `claude-opus-4-20250514` | Maximum accuracy for critical checks | $$$ |
 
 ### Available Tools
 
@@ -217,17 +344,29 @@ The LLM can call these read-only tools to inspect your cluster:
 <details>
 <summary><strong>Slack</strong></summary>
 
+```bash
+# Create secret with Slack webhook URL
+kubectl create secret generic dtm-slack-secret -n dtm-system \
+  --from-literal=api-key=https://hooks.slack.com/services/T.../B.../xxx
+```
+
 ```yaml
 notification:
   slack:
     channel: "#k8s-alerts"
     secretRef:
-      name: dtm-slack-secret    # Secret containing webhook URL or bot token
+      name: dtm-slack-secret
 ```
 </details>
 
 <details>
 <summary><strong>GitHub Issues</strong></summary>
+
+```bash
+# Create secret with GitHub personal access token (needs repo scope)
+kubectl create secret generic dtm-github-secret -n dtm-system \
+  --from-literal=api-key=ghp_xxxxxxxxxxxxx
+```
 
 ```yaml
 notification:
@@ -243,6 +382,13 @@ notification:
 <details>
 <summary><strong>Jira</strong></summary>
 
+```bash
+# Create secret with Jira email + API token (two keys required)
+kubectl create secret generic dtm-jira-secret -n dtm-system \
+  --from-literal=email=user@company.com \
+  --from-literal=token=your-jira-api-token
+```
+
 ```yaml
 notification:
   jira:
@@ -250,7 +396,7 @@ notification:
     project: OPS
     issueType: Bug
     secretRef:
-      name: dtm-jira-secret    # Must contain keys: "email" and "token"
+      name: dtm-jira-secret
 ```
 </details>
 
