@@ -25,9 +25,9 @@ rules:
   - apiGroups: ["dtm.dtm.io"]
     resources: ["checklistresults"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # Read-only cluster access for tools
+  # Read-only cluster access for tools (secrets scoped separately below)
   - apiGroups: [""]
-    resources: ["pods", "pods/log", "nodes", "events", "services", "configmaps", "secrets"]
+    resources: ["pods", "pods/log", "nodes", "events", "services", "configmaps"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
@@ -60,3 +60,43 @@ subjects:
   - kind: ServiceAccount
     name: {{ .Values.operator.serviceAccount.name }}
     namespace: {{ .Values.namespace }}
+{{- /*
+  Secret access: scoped to specific namespaces only.
+  Default: release namespace. Additional via operator.secretAccess.namespaces.
+*/}}
+{{- $secretNamespaces := list .Values.namespace }}
+{{- range .Values.operator.secretAccess.namespaces }}
+{{- if ne . $.Values.namespace }}
+{{- $secretNamespaces = append $secretNamespaces . }}
+{{- end }}
+{{- end }}
+{{- range $secretNamespaces }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "dtm.fullname" $ }}-secret-reader
+  namespace: {{ . }}
+  labels:
+    {{- include "dtm.operatorLabels" $ | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "dtm.fullname" $ }}-secret-reader
+  namespace: {{ . }}
+  labels:
+    {{- include "dtm.operatorLabels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "dtm.fullname" $ }}-secret-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ $.Values.operator.serviceAccount.name }}
+    namespace: {{ $.Values.namespace }}
+{{- end }}

@@ -443,8 +443,24 @@ kubectl get checklistresults -l dtm.dtm.io/policy=production-health --sort-by=.m
 
 - **Read-only cluster access** — the operator never mutates workloads based on LLM output
 - **Secret references** — API keys and tokens are stored in Kubernetes Secrets, never inline in CRDs
+- **Scoped Secret access** — the operator can only read Secrets in the release namespace by default, not cluster-wide
 - **Separate RBAC** — the operator and UI server use distinct ServiceAccounts with minimal permissions
 - **No kubectl exec** — all cluster interaction goes through `client-go`
+
+### Secret Access Scope
+
+By default, the operator can only read Secrets in its own namespace (e.g. `dtm-system`). If your ChecklistPolicies reference Secrets in other namespaces, grant access explicitly:
+
+```yaml
+# values.yaml
+operator:
+  secretAccess:
+    namespaces:
+      - production
+      - staging
+```
+
+This creates a namespaced `Role` + `RoleBinding` in each listed namespace — no cluster-wide Secret access is granted.
 
 ## Development
 

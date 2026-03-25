@@ -13,6 +13,10 @@ operator:
   llm:
     provider: claude
     secretRef: dtm-llm-secret
+  secretAccess:
+    namespaces: []          # namespaces where Operator can read Secrets
+                            # empty = only the release namespace (e.g. dtm-system)
+                            # example: ["dtm-system", "production", "staging"]
   serviceAccount:
     create: true
     name: dtm-operator
